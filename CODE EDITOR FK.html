@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code Editor</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        #header {
+            background-color: #333;
+            color: white;
+            padding: 10px;
+            text-align: center;
+        }
+        #editor {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+        #file-list {
+            width: 200px;
+            background-color: #f4f4f4;
+            border-right: 1px solid #ddd;
+            display: flex;
+            flex-direction: column;
+            padding: 10px;
+        }
+        #file-list ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            flex-grow: 1;
+            overflow-y: auto;
+        }
+        #file-list li {
+            padding: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        #file-list li.active {
+            background-color: #ddd;
+        }
+        #file-content {
+            flex-grow: 1;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+        }
+        textarea {
+            width: 100%;
+            height: 100%;
+            border: none;
+            resize: none;
+            font-family: monospace;
+            padding: 10px;
+            box-sizing: border-box;
+            flex-grow: 1;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        body.light textarea {
+            background-color: white;
+            color: black;
+        }
+        body.dark textarea {
+            background-color: #333;
+            color: white;
+        }
+        #controls {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+        }
+        button {
+            padding: 10px;
+            background-color: #333;
+            color: white;
+            border: none;
+            cursor: pointer;
+            height: 40px;
+            transition: background-color 0.3s;
+        }
+        body.light button {
+            background-color: #333;
+        }
+        body.dark button {
+            background-color: #555;
+        }
+        button:hover {
+            background-color: #555;
+        }
+        #add-file-btn, #delete-file-btn, #save-file-btn, #unsave-file-btn, #toggle-theme-btn {
+            flex-grow: 1;
+            margin: 5px;
+        }
+    </style>
+</head>
+<body class="light">
+    <div id="header">Code Editor</div>
+    <div id="editor">
+        <div id="file-list">
+            <ul id="files"></ul>
+            <button id="add-file-btn">Add File</button>
+            <button id="delete-file-btn">Delete File</button>
+        </div>
+        <div id="file-content">
+            <textarea id="editor-textarea" placeholder="Start coding..."></textarea>
+            <div id="controls">
+                <button id="save-file-btn">Save</button>
+                <button id="unsave-file-btn">Unsave</button>
+                <button id="toggle-theme-btn">Toggle Theme</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        let fileList = document.getElementById('files');
+        let addFileBtn = document.getElementById('add-file-btn');
+        let deleteFileBtn = document.getElementById('delete-file-btn');
+        let saveFileBtn = document.getElementById('save-file-btn');
+        let unsaveFileBtn = document.getElementById('unsave-file-btn');
+        let toggleThemeBtn = document.getElementById('toggle-theme-btn');
+        let editorTextarea = document.getElementById('editor-textarea');
+        let currentFile = null;
+        let files = {};
+
+        // Load saved state
+        function loadState() {
+            const savedFiles = JSON.parse(localStorage.getItem('editorFiles')) || {};
+            const savedTheme = localStorage.getItem('editorTheme') || 'light';
+
+            // Restore files
+            for (let name in savedFiles) {
+                addFile(name);
+                files[name].content = savedFiles[name].content;
+                files[name].saved = savedFiles[name].saved;
+            }
+
+            // Restore theme
+            document.body.className = savedTheme;
+        }
+
+        // Save state
+        function saveState() {
+            localStorage.setItem('editorFiles', JSON.stringify(files));
+            localStorage.setItem('editorTheme', document.body.className);
+        }
+
+        // Add file
+        function addFile(name) {
+            if (files[name]) {
+                alert("File already exists.");
+                return;
+            }
+            let li = document.createElement('li');
+            li.textContent = name;
+            li.addEventListener('click', () => selectFile(name));
+            fileList.appendChild(li);
+            files[name] = { content: '', saved: false };
+            selectFile(name);
+        }
+
+        // Select file
+        function selectFile(name) {
+            if (currentFile !== null) {
+                files[currentFile].content = editorTextarea.value;
+                document.querySelector(`#file-list li.active`)?.classList.remove('active');
+            }
+            currentFile = name;
+            editorTextarea.value = files[name].content;
+            let fileItems = document.querySelectorAll('#file-list li');
+            fileItems.forEach(item => {
+                if (item.textContent === name) {
+                    item.classList.add('active');
+                }
+            });
+        }
+
+        // Delete file
+        function deleteFile() {
+            if (!currentFile) return;
+            delete files[currentFile];
+            document.querySelector(`#file-list li.active`).remove();
+            editorTextarea.value = '';
+            currentFile = null;
+            saveState();
+        }
+
+        // Save file
+        function saveFile() {
+            if (!currentFile) return;
+            files[currentFile].saved = true;
+            alert("File saved!");
+            saveState();
+        }
+
+        // Unsave file
+        function unsaveFile() {
+            if (!currentFile) return;
+            files[currentFile].saved = false;
+            alert("File unsaved!");
+            saveState();
+        }
+
+        // Toggle theme
+        function toggleTheme() {
+            const newTheme = document.body.classList.contains('light') ? 'dark' : 'light';
+            document.body.className = newTheme;
+            saveState();
+        }
+
+        // Button event listeners
+        addFileBtn.addEventListener('click', () => {
+            let fileName = prompt("Enter file name:");
+            if (fileName) addFile(fileName);
+            saveState();
+        });
+
+        deleteFileBtn.addEventListener('click', deleteFile);
+        saveFileBtn.addEventListener('click', saveFile);
+        unsaveFileBtn.addEventListener('click', unsaveFile);
+        toggleThemeBtn.addEventListener('click', toggleTheme);
+
+        // Initialize editor on load
+        window.addEventListener('load', () => {
+            loadState();
+
+            // Handle first use
+            if (Object.keys(files).length === 0) {
+                addFile('main.yml');
+                files['main.yml'].content = 'BAS\nxhsj';
+                editorTextarea.value = files['main.yml'].content;
+            }
+        });
+
+        // Save state on unload
+        window.addEventListener('beforeunload', saveState);
+    </script>
+</body>
+</html>
